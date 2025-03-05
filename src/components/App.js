@@ -5,6 +5,10 @@ import Error from "./Error";
 import StartScreen from "./StartScreen";
 import Question from "./Question";
 import Main from "./Main";
+import NextButton from "./NextButton";
+import Progress from "./Progress";
+import FinishedScreen from "./finishedScreen";
+import Timer from "./Timer";
 
 // -------------------------------------------------
 
@@ -15,6 +19,8 @@ const initialState = {
   index: 0,
   answer: null,
   points: 0,
+  highscore: 0,
+  secondsRemaining: 400,
 };
 
 function reducer(state, action) {
@@ -51,6 +57,34 @@ function reducer(state, action) {
             ? state.points + question.points
             : state.points,
       };
+
+    case "nextQuestion":
+      return {
+        ...state,
+        index: state.index + 1,
+        answer: null,
+      };
+
+    case "finish":
+      return {
+        ...state,
+        status: "finished",
+        highscore:
+          state.points > state.highscore ? state.points : state.highscore,
+      };
+
+    case "restart":
+      return {
+        ...initialState,
+        status: "ready",
+        questions: state.questions,
+      };
+    case "timer":
+      return {
+        ...state,
+        secondsRemaining: state.secondsRemaining - 1,
+        status: state.secondsRemaining === 0 ? "finished" : state.status,
+      };
     default:
       throw new Error("unknown action");
   }
@@ -59,10 +93,10 @@ function reducer(state, action) {
 function App() {
   // --------------------------- State ---------------------------------------
 
-  const [{ questions, status, index, answer }, dispatch] = useReducer(
-    reducer,
-    initialState
-  );
+  const [
+    { questions, status, index, answer, points, highscore, secondsRemaining },
+    dispatch,
+  ] = useReducer(reducer, initialState);
 
   // ------------------------- UseEFFECT -------------------------------------
 
@@ -74,6 +108,8 @@ function App() {
   }, []);
 
   const numQuestions = questions.length;
+  const maxQuestions = questions.reduce((prev, curr) => curr.points + prev, 0);
+
   // ---------------------------- JSX ------------------------
   return (
     <div className="app">
@@ -85,12 +121,41 @@ function App() {
           <StartScreen questions={numQuestions} dispatch={dispatch} />
         )}
         {status === "active" && (
-          <Question
-            question={questions[index]}
-            dispatch={dispatch}
-            answer={answer}
-          />
+          <>
+            <Progress
+              numQuestion={numQuestions}
+              maxQuestions={maxQuestions}
+              index={index}
+              points={points}
+              answer={answer}
+            />
+            <Question
+              question={questions[index]}
+              dispatch={dispatch}
+              answer={answer}
+            />
+            <footer>
+              <Timer secondsRemaining={secondsRemaining} dispatch={dispatch} />
+              <NextButton
+                dispatch={dispatch}
+                answer={answer}
+                index={index}
+                numQuestion={numQuestions}
+              />
+            </footer>
+          </>
         )}
+        {
+          //finish screen
+          status === "finished" && (
+            <FinishedScreen
+              points={points}
+              maxQuestions={maxQuestions}
+              highscore={highscore}
+              dispatch={dispatch}
+            />
+          )
+        }
       </Main>
     </div>
   );
